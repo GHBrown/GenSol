@@ -4,6 +4,8 @@ A collection of generalized solvers for various
 mathematical problem types.
 """
 
+import numpy as np
+
 def GEM(initialConditions,deltat,t_start,t_stop,xpFunction,constants,
     algebraicFunction=None,algebraicVariableInitialConditions=None):
     """
@@ -121,6 +123,7 @@ def BALS(x,grad,descDir,objCur,beta,tau,getValue,extraParameters):
     """
     alpha=1
     while (getValue(x+alpha*descDir,extraParameters)>objCur+alpha*beta*np.inner(grad,descDir)):
+    #while (getValue(x+alpha*descDir,extraParameters)>objCur): #simple line search condition
         alpha=tau*alpha
     xnew=x+alpha*descDir
     return xnew
@@ -153,7 +156,6 @@ def BBSD(x,tol,dq,controlDims,beta,tau,getValue,extraParameters=None):
         objCur=getValue(x,extraParameters) #get current value of objective function
         grad=FDG(x,dq,controlDims,getValue,extraParameters) #compute gradient
         x=BALS(x,grad,-grad,objCur,beta,tau,getValue,extraParameters) #find new trial point using line search in descent direction (negative gradient)
-        #x=x-0.05*grad #test without line search
         relChange=np.abs((objCur-objPrev)/objPrev)
         objPrev=objCur
     return objCur, x
