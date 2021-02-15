@@ -12,7 +12,6 @@ dim=coefficients.shape[0]
 guess=100*np.ones(dim)
 tol=1e-5
 dq=0.001
-controlDims=np.ones(dim) #optimize all available dimensions/variable
 beta=0.01
 tau=0.5
 extras={
@@ -20,10 +19,10 @@ extras={
     }
 
 print(' ')
-print('This may take up to 30 seconds due to the varied')
+print('This may take up to 45 seconds due to the varied')
 print('orders of magnitudes of the coefficients.')
 print(' ')
-objMin,xMinimizing=gs.BBSD(guess,tol,dq,controlDims,beta,tau,parabaloid,extras)
+objMin,xMinimizing=gs.BBSD(guess,parabaloid,extras,relTol=tol,dq=dq,beta=beta,tau=tau)
 print('Objective function minimum:')
 print('   ',objMin)
 print('Minimizing input:')

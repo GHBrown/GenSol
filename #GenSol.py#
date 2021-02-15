@@ -172,8 +172,8 @@ def BBSD(x,getValue,extraParameters=None,**kwargs):
     if "maxIt" in kwargs:
         maxIt=kwargs["maxIt"]
     
-    objPrev=1
-    relChange=relTol
+    objPrev=1 #dummy value of previous objective function evaluation
+    relChange=relTol #dummy setting of relative change in objective function
     while (relChange>=relTol):
         objCur=getValue(x,extraParameters) #get current value of objective function
         grad=FDG(x,dq,controlDims,getValue,extraParameters) #compute gradient
