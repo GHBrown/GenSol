@@ -1,5 +1,5 @@
 ## GenSol (generalized solver library)
-This repository contains solvers for various types of problems including optimization and (systems of) ordinary differential equations which are formulated to be as general as possible.
+This repository contains solvers for various types of problems including optimization and (systems of) ordinary differential equations which are formulated to be as general as possible. Note that Numpy and Scipy's optimization routines should take preference over using those given here, since they provide the same functionality and are actively verified and maintained.
 
 
 ## Implementation and Use
