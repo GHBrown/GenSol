@@ -28,7 +28,7 @@ def fdg(x,dq,controlDims,getValue,extraParameters):
 
 def bals(x,grad,descDir,objCur,beta,tau,getValue,extraParameters):
     """
-    Backtracking Armijo Line Search (BALS), supports BBSD
+    backtracking Armijo line search (bals)
     Implementation of the backtracking-Armijo line search algorithm.
     ---Inputs---
     x: current vector defining free parameters, 1D numpy array
@@ -51,54 +51,44 @@ def bals(x,grad,descDir,objCur,beta,tau,getValue,extraParameters):
     return xnew, iterations
 
 
-def bbsd(x,getValue,extraParameters=None,**kwargs):
+def bbsd(x,fun,grad_fun=None,extra_parameters=None,rel_tol=1e-10,dq=1e-4,control_dims=None,beta=1e-3,tau=0.5,max_it=1e6):
     """
     TO DO:
+    allow gradient function as optional input, if not use finite difference
     allow a vector of finite difference step sizes or better yet dynamic step
         size based on previous gradient
 
-    Black Box Steepest Descent (BBSD)
+    black box steepest descent (bbsd)
     Minimizes black box objective function.
     ---Inputs---
     x: initial result, 1D numpy array
-    getValue: function to compute objective function, function pointer
-    extraParameters: optional extr parameters for getValue, intended as dictionary (but technically could be anything)
-    **relTol: convergence tolerance to relative change in objective function value, floating point scalar
-    **dq: size of finite element step size, floating point scalar
-    **controlDims: list of 1s and 0s determining which free parameters are to be controlled, list
-    **beta: scaling constant used in evaluating Armijo condition (typically 0.1 to 0.001), floating point scalar
-    **tau: coefficient used to shrink alpha each line search step (between 0 and 1, exclusive), floating point scalar
+    fun: function to compute objective function, function pointer
+    extra_parameters: optional extra parameters for fun, intended as dictionary (but technically could be anything)
+    rel_tol: convergence tolerance to relative change in objective function value, floating point scalar
+    dq: size of finite element step size, floating point scalar
+    control_dims: list of 1s and 0s determining which free parameters are to be controlled, list
+    beta: scaling constant used in evaluating Armijo condition (typically 0.1 to 0.001), floating point scalar
+    tau: coefficient used to shrink alpha each line search step (between 0 and 1, exclusive), floating point scalar
     ---Outputs---
-    objMin: minimized value of the objective function, scalar
-    xMinimizing: minimizing vector of free parameters, 1D numpy array
+    obj_min: minimized value of the objective function, scalar
+    x_minimizing: minimizing vector of free parameters, 1D numpy array
     """
-    
-    relTol=0.00001 #set default values of parameters
-    dq=0.0001
-    controlDims=np.ones(x.shape)
-    beta=0.001
-    tau=0.5
-    maxIt=1e6
 
-    if "relTol" in kwargs: #overwrite defaults if necessary
-        relTol=kwargs["relTol"]
-    if "dq" in kwargs:
-        dq=kwargs["dq"]
-    if "controlDims" in kwargs:
-        controlDims=kwargs["controlDims"]
-    if "beta" in kwargs:
-        beta=kwargs["beta"]
-    if "tau" in kwargs:
-        tau=kwargs["tau"]
-    if "maxIt" in kwargs:
-        maxIt=kwargs["maxIt"]
+    if (not control_dims): #default of control_dims cannot be set in function definition
+        control_dims=np.ones(x.shape)
     
-    objPrev=1
-    relChange=relTol
-    while (relChange>=relTol):
-        objCur=getValue(x,extraParameters) #get current value of objective function
-        grad=FDG(x,dq,controlDims,getValue,extraParameters) #compute gradient
-        x,LSIterations=BALS(x,grad,-grad,objCur,beta,tau,getValue,extraParameters) #find new trial point using line search in descent direction (negative gradient)
-        relChange=np.abs((objCur-objPrev)/objPrev)
-        objPrev=objCur
-    return objCur, x
+    fun_prev=1e3*np.info(dtype=float).tiny #initialize small previous value of objective function
+    #to ensure that first iteration does not erroneously terminate
+    rel_change=rel_tol
+    while ((rel_change>=rel_tol) and (num_it<=max_it)):
+        fun_cur=fun(x,extra_parameters) #get current value of objective function
+        if (grad_fun): #use analytic gradient if it exists
+            grad=grad_fun(x,extra_parameters)
+        else: #or use finite difference gradient if no closed form provided
+            grad=fdg(x,dq,control_dims,fun,extra_parameters) #compute gradient
+        x,ls_iterations=bals(x,grad,-grad,fun_cur,beta,tau,fun,extra_parameters) #find new trial point using line search in descent direction (negative gradient)
+        rel_change=np.abs((fun_cur-fun_prev)/fun_prev)
+        obj_prev=obj_cur
+    obj_min=obj_cur
+    x_minimizing=x
+    return x_minimizing, obj_min
