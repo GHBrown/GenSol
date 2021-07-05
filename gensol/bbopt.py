@@ -1,6 +1,12 @@
 
 import numpy as np
 
+"""
+Functions for optimizing black box functions
+(though some allow analytic gradients).
+"""
+
+
 
 def fdg(x,dq,fun,control_dims=None,extra_parameters=None):
     """
@@ -15,7 +21,7 @@ def fdg(x,dq,fun,control_dims=None,extra_parameters=None):
     ---Outputs---
     grad: approximate gradient, 1D numpy array
     """
-    if (not control_dims): #default of control_dims cannot be set in function definition
+    if (not isinstance(control_dims,list)): #default of control_dims cannot be set in function definition
         control_dims=np.ones(x.shape)
 
     grad=np.zeros(control_dims.shape[0])
@@ -29,7 +35,12 @@ def fdg(x,dq,fun,control_dims=None,extra_parameters=None):
     return grad
 
 
-def bals(x,grad,desc_dir,fun_cur,beta,tau,fun,extra_parameters=None,min_alpha=1e-16):
+#---1D optimization---
+#golden section search
+
+
+#---line searches---
+def bals(x,grad,desc_dir,fun_cur,beta,tau,fun,extra_parameters=None,alpha_min=None):
     """
     backtracking Armijo line search (bals)
     Implementation of the backtracking-Armijo line search algorithm.
@@ -45,6 +56,9 @@ def bals(x,grad,desc_dir,fun_cur,beta,tau,fun,extra_parameters=None,min_alpha=1e
     ---Outputs---
     x_new: vector defining free parameters for next iteration, 1D numpy array
     """
+    if (not alpha_min): #define minimum line search alpha relative to float type minimum
+        alpha_min=1e2*np.finfo(x[0]).tiny
+
     alpha=1
     cur_it=1
     while ((fun(x+alpha*desc_dir,extra_parameters) > fun_cur+alpha*beta*np.inner(grad,desc_dir)) \
@@ -56,17 +70,18 @@ def bals(x,grad,desc_dir,fun_cur,beta,tau,fun,extra_parameters=None,min_alpha=1e
     return x_new
 
 
-def bbsd(x,fun,grad_fun=None,extra_parameters=None,rel_tol=1e-10,dq=1e-4,control_dims=None,beta=1e-3,tau=0.5,max_it=1e6):
+#---main optimization functions---
+def gd(x,obj,grad_obj=None,extra_parameters=None,rel_tol=1e-10,dq=1e-4,control_dims=None,beta=1e-3,tau=0.5,max_it=1e6):
     """
     TO DO:
     allow a vector of finite difference step sizes or better yet dynamic step
         size based on previous gradient
 
-    black box steepest descent (bbsd)
+    gradient descent (bbsd)
     Minimizes black box objective function.
     ---Inputs---
     x: initial result, 1D numpy array
-    fun: function to compute objective function, function pointer
+    obj: function pointer to objective function, function pointer
     extra_parameters: optional extra parameters for fun, intended as dictionary (but technically could be anything)
     rel_tol: convergence tolerance to relative change in objective function value, floating point scalar
     dq: size of finite element step size, floating point scalar
@@ -78,21 +93,27 @@ def bbsd(x,fun,grad_fun=None,extra_parameters=None,rel_tol=1e-10,dq=1e-4,control
     x_minimizing: minimizing vector of free parameters, 1D numpy array
     """
 
-    if (not control_dims): #default of control_dims cannot be set in function definition
+    if (not isinstance(control_dims,list)): #default of control_dims cannot be set in function definition
         control_dims=np.ones(x.shape)
     
-    fun_prev=1e3*np.info(dtype=float).tiny #initialize small previous value of objective function
-    #to ensure that first iteration does not erroneously terminate
+    obj_prev=1e-6 #initialize small previous value of objective function to ensure that first
+    #iteration does not erroneously terminate with small rel_change
     rel_change=rel_tol
+    num_it=1
     while ((rel_change>=rel_tol) and (num_it<=max_it)):
-        fun_cur=fun(x,extra_parameters) #get current value of objective function
-        if (grad_fun): #use analytic gradient if it exists
-            grad=grad_fun(x,extra_parameters)
+        obj_cur=obj(x,extra_parameters) #get current value of objective function
+        if (grad_obj): #use analytic gradient if it exists
+            grad=grad_obj(x,extra_parameters)
         else: #or use finite difference gradient if no closed form provided
-            grad=fdg(x,dq,control_dims,fun,extra_parameters) #compute gradient
-        x,ls_iterations=bals(x,grad,-grad,fun_cur,beta,tau,fun,extra_parameters) #find new trial point using line search in descent direction (negative gradient)
-        rel_change=np.abs((fun_cur-fun_prev)/fun_prev)
+            grad=fdg(x,dq,obj,control_dims=control_dims,extra_parameters=extra_parameters) #compute gradient
+        x=bals(x,grad,-grad,obj_cur,beta,tau,obj,extra_parameters) #find new trial point using line search in descent direction (negative gradient)
+        rel_change=np.abs((obj_cur-obj_prev)/obj_prev)
         obj_prev=obj_cur
+        num_it+=1
     obj_min=obj_cur
     x_minimizing=x
     return x_minimizing, obj_min
+
+#nelder-mead method (nmm)
+
+#powell's method (pm)
