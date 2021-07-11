@@ -178,39 +178,60 @@ def gd(obj,x,grad_obj=None,extra_parameters=None,rel_tol=tols._rel_tol,dq=1e-4,c
     return x_minimizing, obj_min
 
 
-#nelder-mead method (nmm)
-def nmm(obj,x0,extra_parameters=None,abs_tol=tols._abs_tol,max_it=1e4,offset=10,offsets=None):
+def nmm(obj,x0,extra_parameters=None,abs_tol=tols._abs_tol,max_it=1e4,offset=10,offset_vec=None):
     """
+    obj: function pointer to objective function, function pointer
+    x0: one specified vertex of simplex ("starting point"), 1D numpy array
+    extra_parameters: optional extra parameters for fun, intended as dictionary (but technically could be anything)
     offset: value determining how far away other vertices are from x0, float
-    IDEAS: linesearch tol that becomes smaller as iterations continue (for example, starts at 1e-6 and linearly increases to tol as num_it approaches max_it)
+    offset_vec: vector of length n specifying how far vertices of simplex should be from x0
+                along coordinate directions, 1D numpy array
     """
     ep=extra_parameters #for brevity
-    n=np.shape(x0) #number of degrees of freedom
-    if offsets is None:
-        offsets=offset*np.ones(n)
+    n=np.shape(x0)[0] #number of degrees of freedom
+    if offset_vec is None:
+        offset_vec=offset*np.ones(n)
     #initialize vertices
-    X=np.empty((n+1,n)) #2D array holding vertex locations in rows
-    X[0,:]=x0
-    X[1:,:]=[x0+offset[i]*np.eye(n)[:,i] for i in range(n)] #set other vertices to the appropiate offset away in coordinate directions (THERE'S PROBABLY A BETTER WAY)
+    V=np.empty((n+1,n)) #2D array holding vertex locations in rows
+    V[0,:]=x0
+    V[1:,:]=[x0+offset_vec[i]*np.eye(n)[:,i] for i in range(n)] #set other vertices to the appropiate offset away in coordinate directions
 
     #initialize vector to store objective function values
     O=np.empty(n+1)
-    for i in O.shape[0]:
-        O[i]=obj(X[i],extra_parameters=ep)
+    for i in range(O.shape[0]):
+        O[i]=obj(V[i,:],extra_parameters=ep)
+
         
     #execute search
-    while not converged:
-        i_max=index of point which has maximum objective function value (from F)
-        x_max=X[i_max,:] vertex at which obj is largest 
-        x_b=barycenter location via averaging rows of X (but exclude the worst point)
-        x_2b=x_b-x_worst #displacement of worst point from barycenter
-        #follow description on wikipedia/scholarpedia
-        X[i_max]=x_new
-        O[i_max]=o_new
+    num_it=0
+    while (num_it < max_it):
+        #find smallest, second largest, and largest objective values
+        #and the vertices at which they occur
+        i_min=np.argmin(O) #vertex number with smallest objective value
+        o_min=O[i_min] #minimum function value on vertices
+        v_min=V[i_min,:] #location of vertex at which obj is smallest
 
-        
+        i_maxes_unsorted=np.argpartition(O,-2)[-2:] #indices of 2 largest vertices (unordered)
+        o_maxes_unsorted=O[i_maxes_unsorted] #two largest objective values (unsorted)
+        o_sort_indices=np.argsort(o_maxes_unsorted) #indices that sort o_maxes_unsorted (ascending)
+        i_maxes=i_maxes_unsorted[o_sort_indices] #indices of 2 largest vertices
+        i_2max=i_maxes[0] #second largest objective value quantities
+        o_2max=o_maxes_unsorted[o_sort_indices][0]
+        v_2max=V[i_2max,:]
+        i_max=i_maxes[1] #largest objective value quantities 
+        o_max=o_maxes_unsorted[o_sort_indices][1]
+        v_max=V[i_max,:]
 
+        v_b=(np.sum(V,axis=0)-v_max)/(n+1) #compute barycenter of points, excluding x_max
+        v_ref=2*v_b-v_max #v_max reflected about v_b, v_ref=v_b+(v_b-v_max)
+        o_ref=obj(v_ref,extra_parameters=ep) #objective value at proposed vertex
 
+        #---whole bunch of logic based on o_ref compared with other selected  vertices
+        #---which will initiate expanding shrinking, contracting, etc.
+
+        num_it+=1
+    return 1, 1
+    #return x_min, obj_min
 
 
 #powell's method (pm)

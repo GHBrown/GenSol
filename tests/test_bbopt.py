@@ -68,6 +68,13 @@ def test_gss(n,abs_tol):
         print('  FAILED,  gss (golden section search)')
         print('      abs_err: ', abs_err)
 
+def test_nmm(n,abs_tol):
+    extras_dict={
+        "c_vec": np.random.rand(n)
+        }
+    x0=np.random.rand(n)
+    x_min,f_min=gensol.bbopt.nmm(n_quadratic,x0,extra_parameters=extras_dict)
+
 
 
 if (__name__=='__main__'):
@@ -80,5 +87,6 @@ if (__name__=='__main__'):
     #test_gss(1,1e-150) #this test case should pass with not problems
     #test_gss(10,abs_tol) #this case should fail very frequently unless the problem noted in gss
     #can be fixed
+    test_nmm(n,abs_tol)
 
 
