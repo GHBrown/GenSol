@@ -18,7 +18,7 @@ def n_quadratic(x,extra_parameters):
     val=np.dot(c_vec,np.power(x,2.0)) #f(x)=c_0*(x_0)^2+...+c_n*(x_n)^2
     return val
 
-def test_gd(n,abs_tol):
+def test_gd(n,rel_tol):
     """
     tests the gradient descent algorithm with a random quadratic problem in n dimensions
     ---Inputs---
@@ -32,7 +32,7 @@ def test_gd(n,abs_tol):
         }
     x0=1e2*np.random.rand(n) #starting point, far from actual answer
 
-    x_min,f_min=gensol.bbopt.gd(n_quadratic,x0,extra_parameters=extras_dict,rel_tol=abs_tol)
+    x_min,f_min=gensol.bbopt.gd(n_quadratic,x0,extra_parameters=extras_dict,rel_tol=rel_tol)
 
     x_sol=np.zeros(n)
     abs_err=np.linalg.norm(x_min-x_sol) #compute absolute error
@@ -45,8 +45,9 @@ def test_gd(n,abs_tol):
 
 def test_gss(n,abs_tol):
     """
-    EVENTUALLY MAKE TEST N DIMENSIONAL AND HAVE POINTS DRAW LINE THROUGH ZERO
-    Tests the golden section search algorithm with a quadratic problem in 1 dimension.
+    tests the golden section search algorithm with a quadratic problem in n dimension
+    *NOTE: n dimensional tests are more difficult than 1 dimensional tests for reason
+           given inside the gss function
     ---Inputs---
     n: number of dimensions/parameters in optimization problem, integer
     abs_tol: absolute error tolerance, float
@@ -69,12 +70,27 @@ def test_gss(n,abs_tol):
         print('      abs_err: ', abs_err)
 
 def test_nmm(n,abs_tol):
+    """
+    tests the Nelder-Mead implementation with a quadratic problem in n dimensions
+    ---Inputs---
+    n: number of dimensions/parameters in optimization problem, integer
+    abs_tol: absolute error tolerance, float
+    --Outputs--
+    NONE, prints info to terminal
+    """
     extras_dict={
         "c_vec": np.random.rand(n)
         }
     x0=np.random.rand(n)
-    x_min,f_min=gensol.bbopt.nmm(n_quadratic,x0,extra_parameters=extras_dict)
+    x_min,f_min=gensol.bbopt.nmm(n_quadratic,x0,extra_parameters=extras_dict,abs_tol=abs_tol)
 
+    x_sol=np.zeros(n)
+    abs_err=np.linalg.norm(x_min-x_sol) #compute absolute error
+    if (abs_err < abs_tol):
+        print('  PASSED,  nmm (Nelder-Mead method)')
+    else:
+        print('  FAILED,  nmm (Nelder-Mead method)')
+        print('      abs_err: ', abs_err)
 
 
 if (__name__=='__main__'):
@@ -84,7 +100,7 @@ if (__name__=='__main__'):
     print('---bbopt---')
     test_gd(n,abs_tol)
     test_gss(n,1e-14) #see the note in gss for why different tolerance is chosen here
-    #test_gss(1,1e-150) #this test case should pass with not problems
+    #test_gss(1,1e-150) #this test case should pass with no problems
     #test_gss(10,abs_tol) #this case should fail very frequently unless the problem noted in gss
     #can be fixed
     test_nmm(n,abs_tol)

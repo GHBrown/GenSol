@@ -140,17 +140,19 @@ def gd(obj,x,grad_obj=None,extra_parameters=None,rel_tol=tols._rel_tol,dq=1e-4,c
     allow a vector of finite difference step sizes or better yet dynamic step
         size based on previous gradient
 
-    gradient descent (bbsd)
-    Minimizes black box objective function.
+    gradient descent (gd)
+    Minimizes black box objective function using finite difference based gradient if
+    no analytical gradient is provided.
     ---Inputs---
     x: initial result, 1D numpy array
     obj: function pointer to objective function, function pointer
     extra_parameters: optional extra parameters for fun, intended as dictionary (but technically could be anything)
-    rel_tol: convergence tolerance to relative change in objective function value, floating point scalar
-    dq: size of finite element step size, floating point scalar
+    rel_tol: convergence tolerance on relative change in objective function value, float
+    dq: size of finite difference step size, floating point scalar
     control_dims: list of 1s and 0s determining which entries of x may be changed, list
     beta: scaling constant used in evaluating Armijo condition (typically 0.1 to 0.001), floating point scalar
     tau: coefficient used to shrink alpha each line search step (between 0 and 1, exclusive), floating point scalar
+    max_it: maximum number of iterations of gradient estimation and line search, int
     ---Outputs---
     obj_min: minimized value of the objective function, scalar
     x_minimizing: minimizing vector of free parameters, 1D numpy array
@@ -162,8 +164,8 @@ def gd(obj,x,grad_obj=None,extra_parameters=None,rel_tol=tols._rel_tol,dq=1e-4,c
     obj_prev=1e-6 #initialize small previous value of objective function to ensure that first
     #iteration does not erroneously terminate with small rel_change
     rel_change=rel_tol
-    num_it=1
-    while ((rel_change>=rel_tol) and (num_it<=max_it)):
+    num_it=0
+    while ((rel_change>=rel_tol) and (num_it<max_it)):
         obj_cur=obj(x,extra_parameters) #get current value of objective function
         if (grad_obj): #use analytic gradient if it exists
             grad=grad_obj(x,extra_parameters)
@@ -178,33 +180,46 @@ def gd(obj,x,grad_obj=None,extra_parameters=None,rel_tol=tols._rel_tol,dq=1e-4,c
     return x_minimizing, obj_min
 
 
-def nmm(obj,x0,extra_parameters=None,abs_tol=tols._abs_tol,max_it=1e4,offset=10,offset_vec=None):
+def nmm(obj,x0,extra_parameters=None,abs_tol=tols._abs_tol,o_tol=None,max_it=1e4,offset=10,offset_vec=None,alpha=1,beta=0.5,gamma=2,delta=0.5):
     """
+    Nelder-Mead method (nmm)
+    optimizes a black-box function using only function values via the Nelder-Mead method*
+    *(implementation follows outline on Scholarpedia)
+    ---Inputs---
     obj: function pointer to objective function, function pointer
     x0: one specified vertex of simplex ("starting point"), 1D numpy array
     extra_parameters: optional extra parameters for fun, intended as dictionary (but technically could be anything)
+    abs_tol: convergence tolerance on the absolute closeness of simplex vertices, float
+    o_tol: convergence tolerance on the closeness of objective function values, float
     offset: value determining how far away other vertices are from x0, float
     offset_vec: vector of length n specifying how far vertices of simplex should be from x0
                 along coordinate directions, 1D numpy array
+    max_it: maximum number of iterations, int
     """
     ep=extra_parameters #for brevity
     n=np.shape(x0)[0] #number of degrees of freedom
+
+    #set all necessary parameters from inputs
+    if (o_tol is None):
+        o_tol=np.power(abs_tol,2.3) #define tolerance on function values as more than square of tolerance on vertices
     if offset_vec is None:
         offset_vec=offset*np.ones(n)
+
     #initialize vertices
     V=np.empty((n+1,n)) #2D array holding vertex locations in rows
     V[0,:]=x0
     V[1:,:]=[x0+offset_vec[i]*np.eye(n)[:,i] for i in range(n)] #set other vertices to the appropiate offset away in coordinate directions
 
-    #initialize vector to store objective function values
+    #initialize vector with objective function values
     O=np.empty(n+1)
     for i in range(O.shape[0]):
         O[i]=obj(V[i,:],extra_parameters=ep)
-
         
     #execute search
     num_it=0
-    while (num_it < max_it):
+    v_close=False #entry value for Boolean determining whether vertices are sufficiently close
+    o_close=False #entry value for Boolean determining whether objective values are sufficiently close
+    while ((not v_close) and (not o_close) and (num_it < max_it)):
         #find smallest, second largest, and largest objective values
         #and the vertices at which they occur
         i_min=np.argmin(O) #vertex number with smallest objective value
@@ -222,16 +237,56 @@ def nmm(obj,x0,extra_parameters=None,abs_tol=tols._abs_tol,max_it=1e4,offset=10,
         o_max=o_maxes_unsorted[o_sort_indices][1]
         v_max=V[i_max,:]
 
-        v_b=(np.sum(V,axis=0)-v_max)/(n+1) #compute barycenter of points, excluding x_max
-        v_ref=2*v_b-v_max #v_max reflected about v_b, v_ref=v_b+(v_b-v_max)
+        v_bary=(np.sum(V,axis=0)-v_max)/(n+1) #compute barycenter of points, excluding v_max
+        v_ref=v_bary+alpha*(v_bary-v_max) #v_max reflected about v_bary by distance alpha
         o_ref=obj(v_ref,extra_parameters=ep) #objective value at proposed vertex
 
-        #---whole bunch of logic based on o_ref compared with other selected  vertices
-        #---which will initiate expanding shrinking, contracting, etc.
+        if ((o_min<=o_ref) and (o_ref<o_2max)): #reflect
+            V[i_max,:]=v_ref #accept reflected point
+            O[i_max]=o_ref
+        elif (o_ref < o_min): #expand
+            v_greed=v_bary+gamma*(v_ref-v_bary) #propose point reflected even further than v_ref
+            o_greed=obj(v_greed,extra_parameters=ep)
+            if (o_greed < o_ref):
+                V[i_max,:]=v_greed
+                O[i_max]=o_greed
+            else:
+                V[i_max,:]=v_ref #accept standard reflected, greedy point was not better
+                O[i_max]=o_ref
+        elif (o_ref > o_2max): #contract
+            if ((o_2max <= o_ref) and (o_ref < o_max)):
+                v_con=v_bary+beta*(v_ref-v_bary) #compute contracted point external to simplex
+                o_con=obj(v_con,extra_parameters=ep)
+                if (o_con < o_ref):
+                    V[i_max,:]=v_con #accept external contracted point
+                    O[i_max]=o_con
+            elif (o_ref > o_max):
+                v_con=v_bary+beta*(v_max-v_bary) #compute contracted point internal to simplex
+                o_con=obj(v_con,extra_parameters=ep)
+                if (o_con < o_max):
+                    V[i_max,:]=v_con #accept internal contracted point
+                    O[i_max]=o_con
+        else: #shrink (most expensive, last resort)
+            shrink_vertices=np.arange(n+1)
+            np.delete(shrink_list,i_min)
+            for i_v in shrink_vertices: #shrink vertices (except minimum) and compute objective
+                V[i_v]=v_min+delta*(V[i_v]-v_min)
+                O[i_v]=obj(V[i_v],extra_parameters=ep)
+
+        #determine if vertices are close enough
+        v0_array=np.vstack(tuple([V[0,:]]*n))
+        v0_disp_array=np.linalg.norm(V[1:,:]-v0_array,axis=1) #vector containing displacement of all points from vertex 0
+        v_close=(np.mean(v0_disp_array) < abs_tol)
+
+        #determine if function values are close enough
+        o_close=(np.std(O) < o_tol)
 
         num_it+=1
-    return 1, 1
-    #return x_min, obj_min
+
+    #compute final parameters and objective value estimate
+    x_min=np.mean(V,axis=0) #average of all vertices
+    obj_min=obj(x_min,extra_parameters=ep)
+    return x_min, obj_min
 
 
 #powell's method (pm)
