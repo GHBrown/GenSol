@@ -35,6 +35,6 @@ estimate gradient via finite difference if not available, but can take gradient 
 - *`gd`* (gradient descent)
 - 'ncg' (nonlinear conjugate gradient, to implement)
 
-##Differential Equations
+## Differential Equations
 - `gfem` (generalized forward Euler method)
 - `gbem` (generalized backward Euler method)
