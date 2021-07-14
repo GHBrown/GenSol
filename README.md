@@ -18,7 +18,8 @@ def user_function(x,extra_parameters=None)
                       is most likely
     ---Output---
     f_of_x: result of state based calculation
-    #perform some calculations using x and extra_parameters
+    """
+    #perform calculations using x and extra_parameters to determine f_of_x
     return  f_of_x
 ```
 
