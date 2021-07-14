@@ -27,14 +27,18 @@ def user_function(x,extra_parameters=None)
 All optimizers can handle black box functions (those with no analytical derivatives).
 ### Direct Search
 use no derivatives or derivative estimates, possibly better for nonsmooth optimization
-- *`gss`* (golden section search)
-- *`nmm`* (Nelder-Mead method)
+- **`gss`** (golden section search)
+- **`nmm`** (Nelder-Mead method)
 - `pm` (Powell method)
 ### Gradient-based
 estimate gradient via finite difference if not available, but can take gradient function as input
-- *`gd`* (gradient descent)
+- **`gd`** (gradient descent)
 - 'ncg' (nonlinear conjugate gradient, to implement)
 
 ## Differential Equations
 - `gfem` (generalized forward Euler method)
 - `gbem` (generalized backward Euler method)
+
+## Legend
+- `not_implemented`
+- **`implemented`**
