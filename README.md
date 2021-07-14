@@ -33,7 +33,7 @@ use no derivatives or derivative estimates, possibly better for nonsmooth optimi
 ### Gradient-based
 estimate gradient via finite difference if not available, but can take gradient function as input
 - **`gd`** (gradient descent)
-- 'ncg' (nonlinear conjugate gradient, to implement)
+- `ncg` (nonlinear conjugate gradient, to implement)
 
 ## Differential Equations
 - `gfem` (generalized forward Euler method)
